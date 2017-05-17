@@ -90,9 +90,6 @@
           "contentVersion": "1.0.0.0"
         },
         "parameters": {
-          "privateVnetSubnetRef": {
-            "value": "[reference(variables('networkDeploymentName')).outputs.appsSubnetRef.value]"
-          },
           "loadbalancerDns": {
             "value": "[concat(parameters('environment'), '-meridian360')]"
           }
