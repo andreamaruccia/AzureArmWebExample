@@ -26,7 +26,7 @@ Import-Module .\common.psm1
 $environment = $environment.ToUpper()
 $templateContainer = "arm-templates"
 $resourceGroupName = "AzureArmWebExample-" + $environment
-$keyVaultName = "AzureArmWebExampleKeyVault" + $environment
+$keyVaultName = "AzureArmWebExample" + $environment
 $resourceGroupNameKeyVault = ($resourceGroupName + "-keyvault")
 
 ### login
