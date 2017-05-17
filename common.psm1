@@ -29,7 +29,7 @@ function New-Secret
     param(
     [Parameter(Mandatory = $true)][string]$secretName,
     [Parameter(Mandatory = $true)][string]$vaultName,
-    [Parameter(Mandatory = $true)][bool]$environmentVariable = $false
+    [bool]$environmentVariable = $false
     )
 
     if ((Get-AzureKeyVaultSecret -VaultName $vaultName -Name $secretName -ErrorAction SilentlyContinue) -ne $null)
