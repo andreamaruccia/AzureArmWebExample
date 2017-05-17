@@ -12,7 +12,6 @@
 )
 
 ### script setup
-
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 2
 try { Set-Location (Split-Path -parent $PSCommandPath) } catch {}
@@ -22,7 +21,6 @@ Remove-Module Common -ErrorAction SilentlyContinue
 Import-Module .\common.psm1
 
 ### variables and config
-
 $environment = $environment.ToUpper()
 $templateContainer = "arm-templates"
 $resourceGroupName = "ArmWebExample-" + $environment
@@ -30,7 +28,6 @@ $keyVaultName = "ArmWebExample" + $environment
 $resourceGroupNameKeyVault = ($resourceGroupName + "-keyvault")
 
 ### login
-
 try
 {
     Get-AzureRmContext | Out-Null
@@ -40,12 +37,10 @@ catch
     Login-AzureRmAccount | Out-Null
 }
 
-
 $subscription = Select-AzureRmSubscription -SubscriptionName $subscriptionName
 Write-Host ("Using subscription '{0}'" -f $subscription.Subscription.SubscriptionName)
 
 ### create resourcegroups
-
 $resourceGroup = New-AzureRmResourceGroup `
                     -Name $resourceGroupName `
                     -Location $location `
@@ -60,8 +55,7 @@ $resourceGroupKeyVault = New-AzureRmResourceGroup `
 
 Write-Host ("Created resourcegroup '{0}'" -f $resourceGroupKeyVault.ResourceGroupName)
 
-## setting up password in vault
-
+## setting up password in vault to avoid to have the password of the vmAdmin in clear text comitted to git
 if ((Get-AzureRmKeyVault -ResourceGroupName $resourceGroupNameKeyVault -VaultName $keyVaultName -ErrorAction SilentlyContinue) -eq $null)
 {
     New-AzureRmKeyVault `
@@ -71,7 +65,7 @@ if ((Get-AzureRmKeyVault -ResourceGroupName $resourceGroupNameKeyVault -VaultNam
         -EnabledForTemplateDeployment
 }
 
-# Wait until keyvault has been created
+# Due to a delay on azure we must wait until keyvault has been actually created
 for($i=1; $i -le 100; $i++)
 {
     try
@@ -96,18 +90,28 @@ for($i=1; $i -le 100; $i++)
     }
 }
 
-### create a secret for the admin password in order to avoid having it in the git repo
+### create the vm admin secret in the azure vault
 New-Secret -secretName "vmAdminPassword" -vaultName $keyVaultName
 
-### put the script in a storage account in order to invoke the arm template. It is secured with sas token to project the sources
+### put the arm templates in a storage account in order to invoke the arm template. It is secured with sas token to project the sources
 $automationStorageAccountName =  ($resourceGroupName + "auto").replace("-", "").ToLower()
-New-AzureRmStorageAccount -ResourceGroupName $resourceGroupName -Name $automationStorageAccountName -SkuName Standard_LRS -Kind BlobStorage -AccessTier Hot -Location $location -ErrorAction SilentlyContinue
 
+New-AzureRmStorageAccount `
+    -ResourceGroupName $resourceGroupName `
+    -Name $automationStorageAccountName `
+    -SkuName Standard_LRS `
+    -Kind BlobStorage `
+    -AccessTier Hot `
+    -Location $location `
+    -ErrorAction SilentlyContinue
+
+#get the sas token
 $key = Get-AzureRmStorageAccountKey -ResourceGroupName $resourceGroupName -Name $automationStorageAccountName
 $context = New-AzureStorageContext -StorageAccountName $automationStorageAccountName -StorageAccountKey $key[0].Value
 $token = New-AzureStorageContainerSASToken -Name $templateContainer -Permission r -ExpiryTime (Get-Date).AddMinutes(90.0) -Context $context
 $securedSasToken = ConvertTo-SecureString -String $token -AsPlainText -Force
 
+#put the token in the vault for future reference
 $secret = Set-AzureKeyVaultSecret `
                 -VaultName $keyVaultName `
                 -Name 'sasToken' `
@@ -115,6 +119,7 @@ $secret = Set-AzureKeyVaultSecret `
 
 Write-Host ("Created secret '{0}'" -f $secret.Name)
 
+#create a container to hold all the scripts
 New-AzureStorageContainer -Name $templateContainer -Permission Off -Context $context -ErrorAction SilentlyContinue | Out-Null
 
 #delete all the old scripts
