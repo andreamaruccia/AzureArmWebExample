@@ -1,0 +1,51 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "storageType": {
+      "type": "string",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_ZRS",
+        "Standard_GRS",
+        "Standard_RAGRS"
+      ]
+    },
+     "environment": {
+      "type": "string",
+      "minLength": 1
+    },
+    "storageName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('environment'),'storage', uniqueString(resourceGroup().id))]",
+      "minLength": 1
+    }
+  },
+  "variables": {
+  },
+  "resources": [
+    {
+      "name": "[parameters('storageName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [],
+      "tags": {
+        "displayName": "[parameters('storageName')]"
+      },
+      "properties": {
+        "accountType": "[parameters('storageType')]"
+      }
+    }
+  ],
+  "outputs": {
+    "storageName": {
+      "type": "string",
+      "value": "[parameters('storageName')]"
+    },
+     "storageConnectionString": {
+      "type": "string",
+      "value": "[Concat('DefaultEndpointsProtocol=https;AccountName=',parameters('storageName'),';AccountKey=',listKeys(resourceId('Microsoft.Storage/storageAccounts',parameters('storageName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]"
+    }
+  }
+}

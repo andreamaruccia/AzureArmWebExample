@@ -1,0 +1,134 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "virtualNetworkName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "appsNetworkSecurityGroupName": {
+      "type": "string",
+      "minLength": 1,
+      "defaultValue": "securitygroup-apps"
+    },
+    "appsNetworkSubnetName": {
+      "type": "string",
+      "defaultValue": "subnet-apps"
+    },
+    "networkPrefix": {
+      "type": "string"
+    },
+    "appsNetworkSubnetPrefix": {
+      "type": "string"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "apiVersion": "2015-06-15",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[parameters('appsNetworkSecurityGroupName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "Http",
+            "properties": {
+              "description": "web traffic",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "Https",
+            "properties": {
+              "description": "web traffic",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "443",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 101,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "Rdp",
+            "properties": {
+              "description": "remote desktop",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "3389",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 200,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "DenyAllOther",
+            "properties": {
+              "description": "Deny all other traffic",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Deny",
+              "priority": 300,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('virtualNetworkName')]",
+      "type": "Microsoft.Network/virtualNetworks",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkSecurityGroups/', parameters('appsNetworkSecurityGroupName'))]"
+      ],
+      "tags": {
+        "displayName": "[parameters('virtualNetworkName')]"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('networkPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('appsNetworkSubnetName')]",
+            "properties": {
+              "addressPrefix": "[parameters('appsNetworkSubnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('appsNetworkSecurityGroupName'))]"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+    "appsSubnetRef": {
+      "type": "string",
+      "value": "[concat(resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworkName')), '/subnets/', parameters('appsNetworkSubnetName'))]"
+    },
+    "virtualNetworkName": {
+      "type": "string",
+      "value": "[parameters('virtualNetworkName')]"
+    }
+  }
+}
