@@ -1,0 +1,152 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmAdminPassword": {
+      "type": "securestring"
+    },
+    "sasToken": {
+      "type": "securestring"
+    },
+    "appsVmCount": {
+      "type": "int",
+      "minValue": 1,
+      "defaultValue": 2
+    },
+    "templateLinkBaseurl": {
+      "type": "string",
+      "minLength": 1
+    },
+    "environment": {
+      "type": "string"
+    },
+    "networkPrefix": {
+      "type": "string"
+    },
+    "appsNetworkSubnetPrefix": {
+      "type": "string"
+    }
+  },
+  "variables": {
+    "vmStorageDeploymentName": "vmStorage",
+    "appsDeploymentName": "apps",
+    "networkDeploymentName": "network",
+    "appsLoadbalancerDeploymentName": "appsLoadbalancer",
+    "vmStorageTemplateLink": "[concat(parameters('templateLinkBaseurl'), variables('vmStorageDeploymentName'), '.json', parameters('sasToken'))]",
+    "networkTemplateLink": "[concat(parameters('templateLinkBaseurl'), variables('networkDeploymentName'), '.json', parameters('sasToken'))]",
+    "appsLoadbalancerTemplateLink": "[concat(parameters('templateLinkBaseurl'), variables('appsLoadbalancerDeploymentName'), '.json', parameters('sasToken'))]",
+    "vmTemplateLink": "[concat(parameters('templateLinkBaseurl'), 'vm', '.json', parameters('sasToken'))]",
+    "dscModulesUrl": "[concat(parameters('templateLinkBaseurl'), 'vmBootstrap.zip', parameters('sasToken'))]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2015-01-01",
+      "name": "[variables('vmStorageDeploymentName')]",
+      "type": "Microsoft.Resources/deployments",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmStorageTemplateLink')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "storageType": {
+            "value": "Standard_LRS"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-01-01",
+      "name": "[variables('networkDeploymentName')]",
+      "type": "Microsoft.Resources/deployments",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('networkTemplateLink')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "virtualNetworkName": {
+            "value": "[concat(parameters('environment'), '-portal-network')]"
+          },
+          "networkPrefix": {
+            "value": "[parameters('networkPrefix')]"
+          },
+          "appsNetworkSubnetPrefix": {
+            "value": "[parameters('appsNetworkSubnetPrefix')]"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-01-01",
+      "name": "[variables('appsLoadbalancerDeploymentName')]",
+      "type": "Microsoft.Resources/deployments",
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('appsLoadbalancerTemplateLink')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "privateVnetSubnetRef": {
+            "value": "[reference(variables('networkDeploymentName')).outputs.appsSubnetRef.value]"
+          },
+          "loadbalancerDns": {
+            "value": "[concat(parameters('environment'), '-meridian360')]"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-01-01",
+      "name": "[variables('appsDeploymentName')]",
+      "type": "Microsoft.Resources/deployments",
+      "dependsOn": [],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmTemplateLink')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "vhdUriPrefix": {
+            "value": "[concat('http://', reference(variables('vmStorageDeploymentName')).outputs.vmStorageName.value, '.blob.core.windows.net/vhds/')]"
+          },
+          "adminPassword": {
+            "value": "[parameters('vmAdminPassword')]"
+          },
+          "subnetRef": {
+            "value": "[reference(variables('networkDeploymentName')).outputs.appsSubnetRef.value]"
+          },
+          "vmCount": {
+            "value": "[parameters('appsVmCount')]"
+          },
+          "imagePublisher": {
+            "value": "MicrosoftWindowsServer"
+          },
+          "imageOffer": {
+            "value": "WindowsServer"
+          },
+          "osVersion": {
+            "value": "2012-R2-Datacenter"
+          },
+          "namePrefix": {
+            "value": "[concat(parameters('environment'), '-apps')]"
+          },
+          "avsetName": {
+            "value": "avset-apps"
+          },
+          "loadBalancerBackendAddressPoolRef": {
+            "value": "[reference(variables('appsLoadbalancerDeploymentName')).outputs.appsloadBalancerBackendAddressPoolRef.value]"
+          },
+          "modulesUrl": {
+            "value": "[variables('dscModulesUrl')]"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {}
+}

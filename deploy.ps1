@@ -145,7 +145,6 @@ $templateParameterObject = @{
     networkPrefix = "10.0.0.0/22"
     appsNetworkSubnetPrefix = "10.0.0.0/24"
     servicesNetworkSubnetPrefix = "10.0.1.0/24"
-    storageType = "Standard_LRS"
 }
 
 $result = New-AzureRmResourceGroupDeployment `
