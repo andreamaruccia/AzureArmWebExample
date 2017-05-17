@@ -25,8 +25,8 @@ Import-Module .\common.psm1
 
 $environment = $environment.ToUpper()
 $templateContainer = "arm-templates"
-$resourceGroupName = "AzureArmWebExample-" + $environment
-$keyVaultName = "AzureArmWebExample" + $environment
+$resourceGroupName = "ArmWebExample-" + $environment
+$keyVaultName = "ArmWebExample" + $environment
 $resourceGroupNameKeyVault = ($resourceGroupName + "-keyvault")
 
 ### login
@@ -100,8 +100,8 @@ for($i=1; $i -le 100; $i++)
 New-Secret -secretName "vmAdminPassword" -vaultName $keyVaultName
 
 ### put the script in a storage account in order to invoke the arm template. It is secured with sas token to project the sources
-$automationStorageAccountName =  ($resourceGroupName + "automation").replace("-", "").ToLower()
-New-AzureRmStorageAccount -ResourceGroupName $resourceGroupName -Name $automationStorageAccountName -SkuName Standard_LRS -Kind BlobStorage -Location $location -ErrorAction SilentlyContinue
+$automationStorageAccountName =  ($resourceGroupName + "auto").replace("-", "").ToLower()
+New-AzureRmStorageAccount -ResourceGroupName $resourceGroupName -Name $automationStorageAccountName -SkuName Standard_LRS -Kind BlobStorage -AccessTier Hot -Location $location -ErrorAction SilentlyContinue
 
 $key = Get-AzureRmStorageAccountKey -ResourceGroupName $resourceGroupName -Name $automationStorageAccountName
 $context = New-AzureStorageContext -StorageAccountName $automationStorageAccountName -StorageAccountKey $key[0].Value
