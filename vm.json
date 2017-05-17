@@ -128,8 +128,7 @@
       "apiVersion": "2015-06-15",
       "location": "[resourceGroup().location]",
       "dependsOn": [
-        "[concat('Microsoft.Compute/virtualMachines/', parameters('namePrefix'), '-', copyIndex())]",
-        "vmAccessAgentCopy"
+        "[concat('Microsoft.Compute/virtualMachines/', parameters('namePrefix'), '-', copyIndex())]"
       ],
       "properties": {
         "publisher": "Microsoft.Powershell",
