@@ -173,7 +173,7 @@
       "properties": {
         "publicIPAllocationMethod": "Dynamic",
         "dnsSettings": {
-          "domainNameLabel": "[concat(parameters('namePrefix'), '-', copyIndex(), '-AzureArmWebExample')]"
+          "domainNameLabel": "[concat(parameters('namePrefix'), '-', copyIndex(), '-azurearmwebexample')]"
         }
       },
       "copy": {
