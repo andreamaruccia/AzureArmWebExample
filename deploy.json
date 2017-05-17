@@ -91,7 +91,7 @@
         },
         "parameters": {
           "loadbalancerDns": {
-            "value": "[concat(parameters('environment'), '-meridian360')]"
+            "value": "[concat(parameters('environment'), '-armwebexample')]"
           }
         }
       }
