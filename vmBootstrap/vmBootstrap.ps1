@@ -1,7 +1,7 @@
 Configuration vmBootstrap
 {
-  Import-DscResource –ModuleName 'PSDesiredStateConfiguration'
-  Import-DscResource -Module cChoco  
+  Import-DscResource -ModuleName 'PSDesiredStateConfiguration'
+  Import-DscResource -Module cChoco
   
   Node localhost
   {
@@ -27,7 +27,4 @@ Configuration vmBootstrap
           DependsOn   = "[cChocoPackageInstaller]installNginx"
       } 
   }
-} 
-
-vmBootstrap
-Start-DscConfiguration .\vmBootstrap -wait -Verbose -force
+}
