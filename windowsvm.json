@@ -1,0 +1,224 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "namePrefix": {
+      "type": "string",
+      "minLength": 1
+    },
+    "vhdUriPrefix": {
+      "type": "string",
+      "minLength": 1
+    },
+    "avsetName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "vmSize": {
+      "type": "string",
+      "minLength": 1,
+      "defaultValue": "Standard_D1"
+    },
+    "adminUsername": {
+      "type": "string",
+      "minLength": 1,
+      "defaultValue": "admin"
+    },
+    "adminPassword": {
+      "type": "securestring"
+    },
+    "imagePublisher": {
+      "type": "string",
+      "minLength": 1,
+      "allowedValues": [
+        "MicrosoftWindowsServer"
+      ]
+    },
+    "imageOffer": {
+      "type": "string",
+      "allowedValues": [
+        "WindowsServer"
+      ]
+    },
+    "osVersion": {
+      "type": "string",
+      "allowedValues": [
+        "2012-R2-Datacenter",
+        "2016-Nano-Server",
+        "2016-Datacenter",
+        "2016-Datacenter-with-Containers"
+      ]
+    },
+    "vmCount": {
+      "type": "int",
+      "minValue": 1,
+      "defaultValue": 2
+    },
+    "subnetRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "loadBalancerBackendAddressPoolRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modulesUrl": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "name": "[concat(parameters('namePrefix'), '-', copyIndex())]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('namePrefix'), '-', copyIndex(), '-', 'nic')]",
+        "[concat('Microsoft.Compute/availabilitySets/', parameters('avsetName'))]"
+      ],
+      "tags": {
+        "displayName": "[concat(parameters('namePrefix'), '-', copyIndex())]"
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[concat(parameters('namePrefix'), '-', copyIndex())]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[parameters('imagePublisher')]",
+            "offer": "[parameters('imageOffer')]",
+            "sku": "[parameters('osVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "[concat(parameters('namePrefix'), copyIndex(), 'OSDisk')]",
+            "vhd": {
+              "uri": "[concat(parameters('vhdUriPrefix'), parameters('namePrefix'), copyIndex(), 'OSDisk', '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('namePrefix'), '-', copyIndex(), '-', 'nic'))]"
+            }
+          ]
+        },
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('avsetName'))]"
+        }
+      },
+      "copy": {
+        "count": "[parameters('vmCount')]",
+        "name": "vmCopy"
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(parameters('namePrefix'), '-', copyIndex(), '/dscExtension')]",
+      "apiVersion": "2015-06-15",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', parameters('namePrefix'), '-', copyIndex())]",
+        "vmAccessAgentCopy"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Powershell",
+        "type": "DSC",
+        "typeHandlerVersion": "2.19",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "ModulesUrl": "[parameters('modulesUrl')]",
+          "SasToken": "",
+          "ConfigurationFunction": "vmBootstrap.ps1\\vmBootstrap",
+          "Properties": {
+            "SomeParam": "someValue"
+          },
+          "wmfVersion": "5.0"
+        },
+        "protectedSettings": null
+      },
+      "copy": {
+        "count": "[parameters('vmCount')]",
+        "name": "vmExtensionCopyDsc"
+      }
+    },
+    {
+      "name": "[parameters('avsetName')]",
+      "type": "Microsoft.Compute/availabilitySets",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [],
+      "tags": {
+        "displayName": "parameters('avsetName')"
+      },
+      "properties": {
+        "platformUpdateDomainCount": 5,
+        "platformFaultDomainCount": 3
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[concat(parameters('namePrefix'), '-', copyIndex(), '-', 'publicIp')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[concat(parameters('namePrefix'), '-', copyIndex(), '-AzureArmWebExample')]"
+        }
+      },
+      "copy": {
+        "count": "[parameters('vmCount')]",
+        "name": "vmpublicIpCopy"
+      }
+    },
+    {
+      "name": "[concat(parameters('namePrefix'), '-', copyIndex(), '-', 'nic')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[concat(parameters('namePrefix'), '-', copyIndex(), '-', 'publicIp')]"
+      ],
+      "tags": {
+        "displayName": "[concat(parameters('namePrefix'), '-', copyIndex(), '-', 'nic')]"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[parameters('subnetRef')]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', concat(parameters('namePrefix'), '-', copyIndex(), '-', 'publicIp'))]"
+              },
+              "loadBalancerBackendAddressPools": [
+                {
+                  "id": "[parameters('loadBalancerBackendAddressPoolRef')]"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "copy": {
+        "count": "[parameters('vmCount')]",
+        "name": "nicCopy"
+      }
+    }
+  ],
+  "outputs": {}
+}
