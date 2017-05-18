@@ -122,7 +122,7 @@ Write-Host ("Created secret '{0}'" -f $secret.Name)
 #create a container to hold all the scripts
 New-AzureStorageContainer -Name $templateContainer -Permission Off -Context $context -ErrorAction SilentlyContinue | Out-Null
 
-#delete all the old scripts
+#delete all the old scripts (idenpotent)
 $oldScripts = Get-AzureStorageBlob -Container $templateContainer -Context $context
 $oldScripts | Remove-AzureStorageBlob -Force
 

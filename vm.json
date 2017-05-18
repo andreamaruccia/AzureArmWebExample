@@ -140,7 +140,6 @@
           "SasToken": "",
           "ConfigurationFunction": "vmBootstrap.ps1\\vmBootstrap",
           "Properties": {
-            "SomeParam": "someValue"
           },
           "wmfVersion": "5.0"
         },
