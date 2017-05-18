@@ -7,5 +7,4 @@ class cChocoPackageInstall : OMI_BaseResource
   [write] string Version;
   [write] string Source;
   [Write] String chocoParams;
-  [Write] Boolean AutoUpgrade;
 };
